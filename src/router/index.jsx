@@ -1,8 +1,8 @@
 import { createBrowserRouter } from "react-router-dom";
 import React, { Suspense, lazy } from "react";
-import Root from "@/layouts/Root";
 import { getRouteConfig } from "./route.utils";
 import Layout from "@/components/organisms/Layout";
+import Root from "@/layouts/Root";
 
 // Lazy load all page components
 const Dashboard = lazy(() => import("@/components/pages/Dashboard"));
@@ -59,7 +59,6 @@ const createRoute = ({
 const route = {
     ...(index ? { index: true } : { path }),
     element: element ? <Suspense fallback={<LoadingFallback />}>{element}</Suspense> : element,
-    handle: {
     handle: {
       access: finalAccess,
       ...meta,
