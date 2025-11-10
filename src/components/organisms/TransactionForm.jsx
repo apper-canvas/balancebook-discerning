@@ -201,7 +201,6 @@ const filteredCategories = categories.filter(cat => {
                 </option>
               );
             })}
-            ))}
           </FormField>
 
           <FormField
