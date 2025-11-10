@@ -116,8 +116,8 @@ amount: (transaction.amount_c || transaction.amount || 0).toString(),
     }
   };
 
-  const filteredCategories = categories.filter(cat => 
-    formData.type === "income" ? cat.name === "Income" : cat.name !== "Income"
+const filteredCategories = categories.filter(cat => 
+    formData.type === "income" ? (cat.name_c || cat.name) === "Income" : (cat.name_c || cat.name) !== "Income"
   );
 
   return (
