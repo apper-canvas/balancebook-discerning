@@ -1,254 +1,162 @@
-import React, { useEffect, useState } from "react";
-import { toast } from "react-toastify";
-import { motion } from "framer-motion";
-import TransactionForm from "@/components/organisms/TransactionForm";
-import { transactionService } from "@/services/api/transactionService";
-import { categoryService } from "@/services/api/categoryService";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import ApperIcon from "@/components/ApperIcon";
-import Button from "@/components/atoms/Button";
 import Card from "@/components/atoms/Card";
-import Loading from "@/components/ui/Loading";
-import Empty from "@/components/ui/Empty";
-import Error from "@/components/ui/Error";
-import CategoryBadge from "@/components/molecules/CategoryBadge";
-import { cn } from "@/utils/cn";
+import Badge from "@/components/atoms/Badge";
+import Button from "@/components/atoms/Button";
+import { transactionService } from "@/services/api/transactionService";
 import { formatCurrency } from "@/utils/formatCurrency";
 import { formatDate } from "@/utils/dateUtils";
+import { cn } from "@/utils/cn";
 
-const TransactionList = ({ selectedMonth, limit = null, onFormOpenChange, refreshTrigger }) => {
+function TransactionList({ selectedMonth, limit }) {
   const [transactions, setTransactions] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [editingTransaction, setEditingTransaction] = useState(null);
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [error, setError] = useState(null);
 
-useEffect(() => {
-    loadData();
-  }, [selectedMonth, refreshTrigger]);
+  useEffect(() => {
+    loadTransactions();
+  }, [selectedMonth, limit]);
 
-  const loadData = async () => {
-    setLoading(true);
-    setError("");
+  const loadTransactions = async () => {
     try {
-      const [transactionsData, categoriesData] = await Promise.all([
-        selectedMonth ? transactionService.getByMonth(selectedMonth) : transactionService.getAll(),
-        categoryService.getAll()
-      ]);
+      setLoading(true);
+      let data;
+      if (selectedMonth) {
+        data = await transactionService.getByMonth(selectedMonth);
+      } else {
+        data = await transactionService.getAll();
+      }
       
-      const displayTransactions = limit ? transactionsData.slice(0, limit) : transactionsData;
-      setTransactions(displayTransactions);
-      setCategories(categoriesData);
-    } catch (err) {
-      setError("Failed to load transactions. Please try again.");
+      // Apply limit if specified
+      if (limit && data.length > limit) {
+        data = data.slice(0, limit);
+      }
+      
+      setTransactions(data);
+      setError(null);
+    } catch (error) {
+      console.error("Failed to load transactions:", error);
+      setError("Failed to load transactions");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEdit = (transaction) => {
-    setEditingTransaction(transaction);
-    setIsFormOpen(true);
+  const getTypeIcon = (type) => {
+    return type === "income" ? "TrendingUp" : "TrendingDown";
   };
 
-  const handleDelete = async (transactionId) => {
-    if (!window.confirm("Are you sure you want to delete this transaction?")) return;
-    
-    try {
-      await transactionService.delete(transactionId);
-      toast.success("Transaction deleted successfully!");
-      loadData();
-    } catch (error) {
-      toast.error("Failed to delete transaction. Please try again.");
-    }
+  const getTypeColor = (type) => {
+    return type === "income" ? "text-success" : "text-error";
   };
 
-  const handleFormClose = () => {
-    setIsFormOpen(false);
-    setEditingTransaction(null);
-  };
-
-  const getCategoryInfo = (categoryName) => {
-    const category = categories.find(cat => cat.name === categoryName);
-    return category ? { color: category.color, icon: category.icon } : { color: "#6b7280", icon: "Tag" };
-  };
-
-  const calculateRunningBalance = () => {
-    let balance = 0;
-    return transactions.map(transaction => {
-      if (transaction.type === "income") {
-        balance += transaction.amount;
-      } else {
-        balance -= transaction.amount;
-      }
-      return { ...transaction, runningBalance: balance };
-    });
-  };
-
-  if (loading) return <Loading variant="skeleton" />;
-  if (error) return <Error message={error} onRetry={loadData} />;
-  if (transactions.length === 0) {
+  if (loading) {
     return (
-      <Empty
-title="No transactions found"
-        description="Start tracking your finances by adding your first transaction"
-        actionLabel="Add Transaction"
-        onAction={() => {
-          if (onFormOpenChange) {
-            onFormOpenChange(true);
-          } else {
-            setIsFormOpen(true);
-          }
-        }}
-        icon="Receipt"
-      />
+      <Card className="p-6">
+        <div className="animate-pulse space-y-4">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="flex items-center space-x-4">
+              <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+              <div className="flex-1 space-y-2">
+                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+              </div>
+              <div className="h-6 bg-gray-200 rounded w-16"></div>
+            </div>
+          ))}
+        </div>
+      </Card>
     );
   }
 
-  const transactionsWithBalance = calculateRunningBalance();
-
-  return (
-    <>
-      <Card className="overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">
-                {limit ? "Recent Transactions" : "All Transactions"}
-              </h3>
-              <p className="text-sm text-gray-600">
-                {transactions.length} transaction{transactions.length !== 1 ? "s" : ""}
-              </p>
-            </div>
-{!limit && (
-              <Button onClick={() => {
-                if (onFormOpenChange) {
-                  onFormOpenChange(true);
-                } else {
-                  setIsFormOpen(true);
-                }
-              }}>
-                <ApperIcon name="Plus" className="w-4 h-4 mr-2" />
-                Add Transaction
-              </Button>
-            )}
-          </div>
+  if (error) {
+    return (
+      <Card className="p-6 text-center">
+        <div className="text-error mb-4">
+          <ApperIcon name="AlertCircle" className="h-12 w-12 mx-auto mb-2" />
+          <p className="text-lg font-semibold">Error Loading Transactions</p>
+          <p className="text-sm text-gray-600 mt-1">{error}</p>
         </div>
+        <Button onClick={loadTransactions} variant="outline">
+          <ApperIcon name="RefreshCw" className="h-4 w-4 mr-2" />
+          Retry
+        </Button>
+      </Card>
+    );
+  }
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Transaction
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Category
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Amount
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Balance
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {transactionsWithBalance.map((transaction, index) => {
-                const categoryInfo = getCategoryInfo(transaction.category);
-                return (
-                  <motion.tr
-                    key={transaction.Id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="hover:bg-gray-50 transition-colors duration-150"
-                  >
-                    <td className="px-6 py-4">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {transaction.description}
-                        </div>
-                        {transaction.notes && (
-                          <div className="text-sm text-gray-500 truncate max-w-[200px]">
-                            {transaction.notes}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    
-                    <td className="px-6 py-4">
-                      <CategoryBadge
-                        category={transaction.category}
-                        color={categoryInfo.color}
-                        icon={categoryInfo.icon}
-                      />
-                    </td>
-                    
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {formatDate(transaction.date)}
-                    </td>
-                    
-                    <td className="px-6 py-4 text-right">
-                      <span className={cn(
-                        "text-sm font-medium",
-                        transaction.type === "income" ? "text-success" : "text-gray-900"
-                      )}>
-                        {transaction.type === "income" ? "+" : "-"}
-                        {formatCurrency(transaction.amount)}
-                      </span>
-                    </td>
-                    
-                    <td className="px-6 py-4 text-right">
-                      <span className={cn(
-                        "text-sm font-medium",
-                        transaction.runningBalance >= 0 ? "text-success" : "text-error"
-                      )}>
-                        {formatCurrency(transaction.runningBalance)}
-                      </span>
-                    </td>
-                    
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(transaction)}
-                        >
-                          <ApperIcon name="Edit" className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(transaction.Id)}
-                          className="text-error hover:text-error"
-                        >
-                          <ApperIcon name="Trash2" className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                );
-              })}
-            </tbody>
-          </table>
+  if (transactions.length === 0) {
+    return (
+      <Card className="p-6 text-center">
+        <div className="text-gray-400 mb-4">
+          <ApperIcon name="Receipt" className="h-12 w-12 mx-auto mb-2" />
+          <p className="text-lg font-semibold">No Transactions</p>
+          <p className="text-sm text-gray-600 mt-1">
+            {selectedMonth ? `No transactions found for ${selectedMonth}` : "No transactions found"}
+          </p>
         </div>
       </Card>
+    );
+  }
 
-      <TransactionForm
-        isOpen={isFormOpen}
-        onClose={handleFormClose}
-        transaction={editingTransaction}
-        onSuccess={loadData}
-      />
-    </>
+  return (
+    <Card className="p-6">
+      <div className="space-y-4">
+        <AnimatePresence mode="wait">
+          {transactions.map((transaction) => (
+            <motion.div
+              key={transaction.Id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.2 }}
+              className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg transition-colors"
+            >
+              <div className="flex items-center space-x-4">
+                <div className={cn(
+                  "w-10 h-10 rounded-full flex items-center justify-center",
+                  (transaction.type_c || transaction.type) === "income" 
+                    ? "bg-success/10" 
+                    : "bg-error/10"
+                )}>
+                  <ApperIcon 
+                    name={getTypeIcon(transaction.type_c || transaction.type)} 
+                    className={cn("h-5 w-5", getTypeColor(transaction.type_c || transaction.type))}
+                  />
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900">
+                    {transaction.description_c || transaction.description || transaction.Name}
+                  </p>
+                  <div className="flex items-center space-x-2 text-sm text-gray-500">
+                    <span>{transaction.category_c || transaction.category}</span>
+                    <span>•</span>
+                    <span>{formatDate(transaction.date_c || transaction.date)}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="text-right">
+                <div className={cn(
+                  "font-semibold",
+                  getTypeColor(transaction.type_c || transaction.type)
+                )}>
+                  {(transaction.type_c || transaction.type) === "income" ? "+" : "-"}
+                  {formatCurrency(transaction.amount_c || transaction.amount)}
+                </div>
+                {transaction.notes_c || transaction.notes ? (
+                  <p className="text-xs text-gray-400 mt-1 truncate max-w-32">
+                    {transaction.notes_c || transaction.notes}
+                  </p>
+                ) : null}
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+    </Card>
   );
-};
+}
 
 export default TransactionList;

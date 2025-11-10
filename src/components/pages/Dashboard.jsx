@@ -35,13 +35,13 @@ const Dashboard = () => {
         savingsGoalService.getGoalsSummary()
       ]);
 
-      const income = transactions
-        .filter(t => t.type === "income")
-        .reduce((sum, t) => sum + t.amount, 0);
+const income = transactions
+        .filter(t => (t.type_c || t.type) === "income")
+        .reduce((sum, t) => sum + (t.amount_c || t.amount || 0), 0);
 
       const expenses = transactions
-        .filter(t => t.type === "expense")
-        .reduce((sum, t) => sum + t.amount, 0);
+        .filter(t => (t.type_c || t.type) === "expense")
+        .reduce((sum, t) => sum + (t.amount_c || t.amount || 0), 0);
 
       const balance = income - expenses;
       const budgetHealth = budgetSummary.totalBudget > 0 

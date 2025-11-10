@@ -1,5 +1,7 @@
 import { createBrowserRouter } from "react-router-dom";
-import { lazy, Suspense } from "react";
+import React, { Suspense, lazy } from "react";
+import Root from "@/layouts/Root";
+import { getRouteConfig } from "./route.utils";
 import Layout from "@/components/organisms/Layout";
 
 // Lazy load all page components
@@ -8,6 +10,12 @@ const Transactions = lazy(() => import("@/components/pages/Transactions"));
 const Budgets = lazy(() => import("@/components/pages/Budgets"));
 const Goals = lazy(() => import("@/components/pages/Goals"));
 const Charts = lazy(() => import("@/components/pages/Charts"));
+const Login = lazy(() => import("@/components/pages/Login"));
+const Signup = lazy(() => import("@/components/pages/Signup"));
+const Callback = lazy(() => import("@/components/pages/Callback"));
+const ErrorPage = lazy(() => import("@/components/pages/ErrorPage"));
+const ResetPassword = lazy(() => import("@/components/pages/ResetPassword"));
+const PromptPassword = lazy(() => import("@/components/pages/PromptPassword"));
 
 // Professional loading fallback component
 const LoadingFallback = () => (
@@ -30,56 +38,99 @@ const SuspenseWrapper = ({ children }) => (
 );
 
 // Main routes configuration
-const mainRoutes = [
-  {
-    path: "",
-    index: true,
-    element: (
-      <SuspenseWrapper>
-        <Dashboard />
-      </SuspenseWrapper>
-    )
-  },
-  {
-    path: "transactions",
-    element: (
-      <SuspenseWrapper>
-        <Transactions />
-      </SuspenseWrapper>
-    )
-  },
-  {
-    path: "budgets",
-    element: (
-      <SuspenseWrapper>
-        <Budgets />
-      </SuspenseWrapper>
-    )
-  },
-  {
-    path: "goals",
-    element: (
-      <SuspenseWrapper>
-        <Goals />
-      </SuspenseWrapper>
-    )
-  },
-  {
-    path: "charts",
-    element: (
-      <SuspenseWrapper>
-        <Charts />
-      </SuspenseWrapper>
-    )
+const createRoute = ({
+  path,
+  index,
+  element,
+  access,
+  children,
+  ...meta
+}) => {
+  // Get config for this route
+  let configPath;
+  if (index) {
+    configPath = "/";
+  } else {
+    configPath = path.startsWith('/') ? path : `/${path}`;
   }
+
+  const config = getRouteConfig(configPath);
+  const finalAccess = access || config?.allow;
+const route = {
+    ...(index ? { index: true } : { path }),
+    element: element ? <Suspense fallback={<LoadingFallback />}>{element}</Suspense> : element,
+    handle: {
+    handle: {
+      access: finalAccess,
+      ...meta,
+    },
+  };
+
+  if (children && children.length > 0) {
+    route.children = children;
+  }
+
+  return route;
+};
+
+const mainRoutes = [
+  createRoute({
+    index: true,
+    element: <Dashboard />
+  }),
+  createRoute({
+    path: "transactions",
+    element: <Transactions />
+  }),
+  createRoute({
+    path: "budgets", 
+    element: <Budgets />
+  }),
+  createRoute({
+    path: "goals",
+    element: <Goals />
+  }),
+  createRoute({
+    path: "charts",
+    element: <Charts />
+  })
 ];
 
-// Router configuration
 const routes = [
   {
     path: "/",
-    element: <Layout />,
-    children: [...mainRoutes]
+    element: <Root />,
+    children: [
+      {
+        path: "/",
+        element: <Layout />,
+        children: mainRoutes
+      },
+      createRoute({
+        path: "login",
+        element: <Login />
+      }),
+      createRoute({
+        path: "signup", 
+        element: <Signup />
+      }),
+      createRoute({
+        path: "callback",
+        element: <Callback />
+      }),
+      createRoute({
+        path: "error",
+        element: <ErrorPage />
+      }),
+      createRoute({
+        path: "reset-password/:appId/:fields",
+        element: <ResetPassword />
+      }),
+      createRoute({
+        path: "prompt-password/:appId/:emailAddress/:provider",
+        element: <PromptPassword />
+      })
+    ]
   }
 ];
 

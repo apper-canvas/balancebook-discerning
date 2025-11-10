@@ -1,98 +1,72 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
+import { useAuth } from "@/layouts/Root";
+import React from "react";
 import ApperIcon from "@/components/ApperIcon";
+import Button from "@/components/atoms/Button";
 import { cn } from "@/utils/cn";
-
-const Sidebar = ({ className }) => {
+function Sidebar({ className }) {
+  const location = useLocation();
+  const { logout } = useAuth();
+  
   const navigation = [
-    {
-      name: "Dashboard",
-      href: "/",
-      icon: "LayoutDashboard"
-    },
-    {
-      name: "Transactions",
-      href: "/transactions",
-      icon: "Receipt"
-    },
-    {
-      name: "Budgets",
-      href: "/budgets", 
-      icon: "Target"
-    },
-    {
-      name: "Goals",
-      href: "/goals",
-      icon: "Trophy"
-    },
-    {
-      name: "Charts",
-      href: "/charts",
-      icon: "PieChart"
-    }
+    { name: "Dashboard", href: "/", icon: "LayoutDashboard" },
+    { name: "Transactions", href: "/transactions", icon: "Receipt" },
+    { name: "Budgets", href: "/budgets", icon: "Target" },
+    { name: "Goals", href: "/goals", icon: "TrendingUp" },
+    { name: "Charts", href: "/charts", icon: "BarChart3" }
   ];
 
   return (
-    <div className={cn("bg-white border-r border-gray-200 w-64 fixed left-0 top-0 bottom-0 z-30", className)}>
-      <div className="flex flex-col h-full">
-        {/* Logo */}
-        <div className="flex items-center px-6 py-8">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary to-secondary rounded-lg flex items-center justify-center">
-              <ApperIcon name="Wallet" className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">BalanceBook</h1>
-              <p className="text-xs text-gray-500">Personal Finance</p>
-            </div>
+    <div className={cn(
+      "fixed top-0 left-0 h-full w-64 bg-white shadow-lg border-r border-gray-200 z-40 flex flex-col",
+      className
+    )}>
+      <div className="p-6">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-gradient-to-r from-primary to-secondary rounded-lg flex items-center justify-center">
+            <ApperIcon name="Wallet" className="h-6 w-6 text-white" />
           </div>
+          <h1 className="text-xl font-bold text-gray-900">BalanceBook</h1>
         </div>
+      </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 px-4 space-y-2">
-          {navigation.map((item) => (
+      <nav className="mt-8 space-y-2 flex-1 px-4">
+        {navigation.map((item) => {
+          const isActive = item.href === "/" 
+            ? location.pathname === "/" 
+            : location.pathname.startsWith(item.href);
+            
+          return (
             <NavLink
               key={item.name}
               to={item.href}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 group",
-                  isActive
-                    ? "bg-gradient-to-r from-primary/10 to-secondary/10 text-primary border-l-4 border-primary ml-0 pl-3"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                )
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <ApperIcon 
-                    name={item.icon} 
-                    className={cn(
-                      "w-5 h-5 mr-3 transition-colors duration-200",
-                      isActive ? "text-primary" : "text-gray-400 group-hover:text-gray-600"
-                    )} 
-                  />
-                  {item.name}
-                </>
+              className={cn(
+                "flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200",
+                isActive
+                  ? "bg-gradient-to-r from-primary to-secondary text-white shadow-lg"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
               )}
+            >
+              <ApperIcon name={item.icon} className="h-5 w-5" />
+              <span>{item.name}</span>
             </NavLink>
-          ))}
-        </nav>
-
-        {/* Footer */}
-        <div className="p-4 border-t border-gray-200">
-          <div className="bg-gradient-to-r from-primary/10 to-secondary/10 rounded-lg p-4">
-            <div className="flex items-center space-x-3">
-              <ApperIcon name="TrendingUp" className="w-5 h-5 text-primary" />
-              <div>
-                <p className="text-sm font-medium text-gray-900">Stay on track!</p>
-                <p className="text-xs text-gray-600">Monitor your financial goals</p>
-              </div>
-            </div>
-          </div>
-        </div>
+          );
+        })}
+      </nav>
+      
+      {/* Logout Button */}
+      <div className="p-6 mt-auto">
+        <Button
+          onClick={logout}
+          variant="outline"
+          className="w-full flex items-center space-x-2 text-gray-600 hover:text-gray-900"
+        >
+          <ApperIcon name="LogOut" className="h-4 w-4" />
+          <span>Logout</span>
+        </Button>
       </div>
     </div>
   );
-};
+}
 
 export default Sidebar;

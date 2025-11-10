@@ -1,177 +1,222 @@
 import { useState } from "react";
-import { toast } from "react-toastify";
 import { motion } from "framer-motion";
+import { toast } from "react-toastify";
 import ApperIcon from "@/components/ApperIcon";
-import Button from "@/components/atoms/Button";
-import Input from "@/components/atoms/Input";
 import Card from "@/components/atoms/Card";
+import Button from "@/components/atoms/Button";
 import ProgressBar from "@/components/molecules/ProgressBar";
+import Modal from "@/components/molecules/Modal";
+import FormField from "@/components/molecules/FormField";
 import { budgetService } from "@/services/api/budgetService";
 import { formatCurrency } from "@/utils/formatCurrency";
 import { cn } from "@/utils/cn";
 
-const BudgetCard = ({ budget, categoryInfo, onUpdate }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editAmount, setEditAmount] = useState(budget.monthlyLimit.toString());
-  const [isSubmitting, setIsSubmitting] = useState(false);
+function BudgetCard({ budget, categoryInfo, onUpdate }) {
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    monthlyLimit: ""
+  });
 
-  const percentage = budget.monthlyLimit > 0 ? (budget.spent / budget.monthlyLimit) * 100 : 0;
-  const remaining = budget.monthlyLimit - budget.spent;
+  const progressPercentage = budget.monthly_limit_c > 0 ? 
+    ((budget.spent_c || 0) / budget.monthly_limit_c) * 100 : 0;
+  
+  const remaining = budget.monthly_limit_c - (budget.spent_c || 0);
+  const isOverBudget = remaining < 0;
 
-  const getStatusColor = () => {
-    if (percentage < 50) return "success";
-    if (percentage < 80) return "warning";
+  const getProgressColor = () => {
+    if (progressPercentage <= 50) return "success";
+    if (progressPercentage <= 80) return "warning";
     return "error";
   };
 
-  const handleSave = async () => {
-    const newAmount = parseFloat(editAmount);
-    if (isNaN(newAmount) || newAmount < 0) {
-      toast.error("Please enter a valid budget amount");
-      return;
-    }
+  const handleEdit = () => {
+    setEditForm({
+      monthlyLimit: budget.monthly_limit_c?.toString() || ""
+    });
+    setIsEditModalOpen(true);
+  };
 
-    setIsSubmitting(true);
+  const handleSaveEdit = async () => {
     try {
-      await budgetService.update(budget.Id, { 
-        ...budget,
-        monthlyLimit: newAmount 
+      const amount = parseFloat(editForm.monthlyLimit);
+      if (isNaN(amount) || amount <= 0) {
+        toast.error("Please enter a valid budget amount");
+        return;
+      }
+
+      await budgetService.update(budget.Id, {
+        monthlyLimit: amount
       });
+
       toast.success("Budget updated successfully!");
-      setIsEditing(false);
+      setIsEditModalOpen(false);
       onUpdate?.();
     } catch (error) {
-      toast.error("Failed to update budget. Please try again.");
-    } finally {
-      setIsSubmitting(false);
+      console.error("Failed to update budget:", error);
+      toast.error("Failed to update budget");
     }
   };
 
-  const handleCancel = () => {
-    setEditAmount(budget.monthlyLimit.toString());
-    setIsEditing(false);
+  const handleDelete = async () => {
+    try {
+      await budgetService.delete(budget.Id);
+      toast.success("Budget deleted successfully!");
+      setIsDeleteModalOpen(false);
+      onUpdate?.();
+    } catch (error) {
+      console.error("Failed to delete budget:", error);
+      toast.error("Failed to delete budget");
+    }
   };
 
   return (
-    <Card className="p-6 hover">
+    <>
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="space-y-4"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.2 }}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div 
-              className="w-10 h-10 rounded-lg flex items-center justify-center"
-              style={{ backgroundColor: `${categoryInfo.color}20` }}
-            >
-              <ApperIcon 
-                name={categoryInfo.icon} 
-                className="w-5 h-5"
-                style={{ color: categoryInfo.color }}
-              />
+        <Card className="p-6 hover:shadow-md transition-shadow">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-center space-x-3">
+              <div 
+                className="w-12 h-12 rounded-lg flex items-center justify-center text-white"
+                style={{ backgroundColor: categoryInfo.color }}
+              >
+                <ApperIcon name={categoryInfo.icon} className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">
+                  {budget.category_c || budget.category}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {budget.month_c || budget.month}
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-semibold text-gray-900">{budget.category}</h3>
-              <p className="text-sm text-gray-600">Monthly Budget</p>
+            
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleEdit}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <ApperIcon name="Edit2" className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsDeleteModalOpen(true)}
+                className="text-gray-400 hover:text-red-600"
+              >
+                <ApperIcon name="Trash2" className="h-4 w-4" />
+              </Button>
             </div>
           </div>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsEditing(!isEditing)}
-            className="p-2"
-          >
-            <ApperIcon name="Edit" className="w-4 h-4" />
-          </Button>
-        </div>
-
-        {/* Budget Amount */}
-        <div className="space-y-2">
-          {isEditing ? (
-            <div className="flex items-center space-x-2">
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                value={editAmount}
-                onChange={(e) => setEditAmount(e.target.value)}
-                className="flex-1"
-              />
-              <Button
-                size="sm"
-                onClick={handleSave}
-                disabled={isSubmitting}
-              >
-                Save
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCancel}
-              >
-                Cancel
-              </Button>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-gray-600">Spent</span>
+              <span className="font-medium">
+                {formatCurrency(budget.spent_c || 0)} of {formatCurrency(budget.monthly_limit_c || 0)}
+              </span>
             </div>
-          ) : (
-            <div className="text-2xl font-bold text-gray-900">
-              {formatCurrency(budget.monthlyLimit)}
-            </div>
-          )}
-        </div>
 
-        {/* Progress */}
-        <div className="space-y-3">
-          <ProgressBar
-            value={budget.spent}
-            max={budget.monthlyLimit}
-            color="auto"
-            showLabel={false}
+            <ProgressBar
+              value={budget.spent_c || 0}
+              max={budget.monthly_limit_c || 1}
+              color={getProgressColor()}
+              showPercentage={true}
+            />
+
+            <div className="flex justify-between items-center">
+              <div className="text-center">
+                <div className={cn(
+                  "text-lg font-bold",
+                  isOverBudget ? "text-error" : "text-success"
+                )}>
+                  {formatCurrency(Math.abs(remaining))}
+                </div>
+                <div className="text-xs text-gray-500">
+                  {isOverBudget ? "Over Budget" : "Remaining"}
+                </div>
+              </div>
+              
+              <div className="text-center">
+                <div className="text-lg font-bold text-primary">
+                  {progressPercentage.toFixed(1)}%
+                </div>
+                <div className="text-xs text-gray-500">Used</div>
+              </div>
+            </div>
+          </div>
+        </Card>
+      </motion.div>
+
+      {/* Edit Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Edit Budget"
+      >
+        <div className="space-y-4">
+          <FormField
+            label="Monthly Budget Limit"
+            type="number"
+            value={editForm.monthlyLimit}
+            onChange={(e) => setEditForm(prev => ({ ...prev, monthlyLimit: e.target.value }))}
+            placeholder="Enter budget amount"
           />
           
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-600">
-              Spent: <span className="font-medium text-gray-900">
-                {formatCurrency(budget.spent)}
-              </span>
-            </span>
-            <span className={cn(
-              "font-medium",
-              remaining >= 0 ? "text-success" : "text-error"
-            )}>
-              {remaining >= 0 ? "Remaining: " : "Over by: "}
-              {formatCurrency(Math.abs(remaining))}
-            </span>
+          <div className="flex space-x-3 pt-4">
+            <Button onClick={handleSaveEdit} className="flex-1">
+              Save Changes
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsEditModalOpen(false)}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
           </div>
         </div>
+      </Modal>
 
-        {/* Status Indicator */}
-        <div className={cn(
-          "flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium",
-          percentage < 50 && "bg-success/10 text-success",
-          percentage >= 50 && percentage < 80 && "bg-warning/10 text-warning",
-          percentage >= 80 && percentage < 100 && "bg-warning/20 text-warning",
-          percentage >= 100 && "bg-error/10 text-error"
-        )}>
-          <ApperIcon 
-            name={
-              percentage < 50 ? "CheckCircle" :
-              percentage < 80 ? "AlertCircle" : "XCircle"
-            } 
-            className="w-4 h-4" 
-          />
-          <span>
-            {percentage < 50 && "On track"}
-            {percentage >= 50 && percentage < 80 && "Monitor spending"}
-            {percentage >= 80 && percentage < 100 && "Approaching limit"}
-            {percentage >= 100 && "Over budget"}
-          </span>
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Delete Budget"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600">
+            Are you sure you want to delete the budget for "{budget.category_c || budget.category}"? 
+            This action cannot be undone.
+          </p>
+          
+          <div className="flex space-x-3">
+            <Button 
+              variant="destructive" 
+              onClick={handleDelete}
+              className="flex-1"
+            >
+              Delete
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsDeleteModalOpen(false)}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+          </div>
         </div>
-      </motion.div>
-    </Card>
+      </Modal>
+    </>
   );
-};
+}
 
 export default BudgetCard;

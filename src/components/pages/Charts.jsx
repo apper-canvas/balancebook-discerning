@@ -82,8 +82,8 @@ const Charts = () => {
   };
 
   const getCategoryColor = (categoryName) => {
-    const category = categories.find(cat => cat.name === categoryName);
-    return category ? category.color : "#6b7280";
+const category = categories.find(cat => (cat.name_c || cat.name) === categoryName);
+    return category ? (category.color_c || category.color) : "#6b7280";
   };
 
   const pieChartOptions = {

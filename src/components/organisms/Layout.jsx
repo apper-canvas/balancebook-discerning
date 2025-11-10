@@ -1,8 +1,9 @@
 import { Outlet } from "react-router-dom";
-import Sidebar from "./Sidebar";
-import MobileNav from "./MobileNav";
+import React from "react";
+import Sidebar from "@/components/organisms/Sidebar";
+import MobileNav from "@/components/organisms/MobileNav";
 
-const Layout = () => {
+function Layout() {
   // App-level state and methods can be defined here
   // and passed to child routes via outlet context
   const outletContext = {
@@ -20,11 +21,11 @@ const Layout = () => {
       {/* Main Content */}
       <div className="lg:ml-64 pt-20 lg:pt-0">
         <main className="p-6">
-<Outlet context={outletContext} />
+          <Outlet context={outletContext} />
         </main>
       </div>
     </div>
   );
-};
+}
 
 export default Layout;

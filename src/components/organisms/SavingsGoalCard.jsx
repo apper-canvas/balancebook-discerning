@@ -1,12 +1,14 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
+import { savingsGoalService } from "@/services/api/savingsGoalService";
 import ApperIcon from "@/components/ApperIcon";
 import Button from "@/components/atoms/Button";
-import Input from "@/components/atoms/Input";
 import Card from "@/components/atoms/Card";
+import Input from "@/components/atoms/Input";
+import Badge from "@/components/atoms/Badge";
+import ProgressBar from "@/components/molecules/ProgressBar";
 import Modal from "@/components/molecules/Modal";
-import { savingsGoalService } from "@/services/api/savingsGoalService";
 import { formatCurrency, formatPercentage } from "@/utils/formatCurrency";
 import { formatDate } from "@/utils/dateUtils";
 import { cn } from "@/utils/cn";
@@ -29,7 +31,7 @@ const SavingsGoalCard = ({ goal, onUpdate }) => {
     }
   };
 
-  const handleContribution = async () => {
+const handleContribution = async () => {
     const amount = parseFloat(contributionAmount);
     if (isNaN(amount) || amount <= 0) {
       toast.error("Please enter a valid contribution amount");
@@ -39,9 +41,9 @@ const SavingsGoalCard = ({ goal, onUpdate }) => {
     setIsSubmitting(true);
     try {
       await savingsGoalService.addContribution(goal.Id, amount);
-      toast.success(`Added ${formatCurrency(amount)} to ${goal.name}!`);
-      setContributionAmount("");
+      toast.success(`Successfully added ${formatCurrency(amount)} to your goal!`);
       setIsContributionModalOpen(false);
+      setContributionAmount("");
       onUpdate?.();
     } catch (error) {
       toast.error("Failed to add contribution. Please try again.");
@@ -64,7 +66,6 @@ const SavingsGoalCard = ({ goal, onUpdate }) => {
 
   const daysUntilDeadline = Math.ceil((new Date(goal.deadline) - new Date()) / (1000 * 60 * 60 * 24));
   const isOverdue = daysUntilDeadline < 0;
-
   return (
     <>
       <Card className="p-6 hover">
@@ -73,30 +74,31 @@ const SavingsGoalCard = ({ goal, onUpdate }) => {
           animate={{ opacity: 1, y: 0 }}
           className="space-y-4"
         >
-          {/* Header */}
+{/* Header */}
           <div className="flex items-start justify-between">
-            <div className="space-y-1">
-              <h3 className="font-semibold text-gray-900">{goal.name}</h3>
-              <div className="flex items-center space-x-2">
-                <span 
-                  className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                  style={{ 
-                    backgroundColor: `${getPriorityColor(goal.priority)}20`,
-                    color: getPriorityColor(goal.priority)
-                  }}
-                >
-                  {goal.priority} priority
-                </span>
-                
-                {isOverdue ? (
-                  <span className="text-xs text-error font-medium">
-                    {Math.abs(daysUntilDeadline)} days overdue
-                  </span>
-                ) : (
-                  <span className="text-xs text-gray-600">
-                    {daysUntilDeadline} days left
-                  </span>
-                )}
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <ApperIcon name="Target" className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">{goal.name}</h3>
+                <div className="flex items-center space-x-2 text-sm text-gray-500">
+                  <Badge variant={getPriorityColor(goal.priority)} size="sm">
+                    {goal.priority}
+                  </Badge>
+                  <span>•</span>
+                  <span>{formatDate(goal.deadline)}</span>
+                  <span>•</span>
+                  {isOverdue ? (
+                    <span className="text-xs text-error font-medium">
+                      {Math.abs(daysUntilDeadline)} days overdue
+                    </span>
+                  ) : (
+                    <span className="text-xs text-gray-600">
+                      {daysUntilDeadline} days left
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -106,14 +108,21 @@ const SavingsGoalCard = ({ goal, onUpdate }) => {
               onClick={handleDelete}
               className="p-2 text-gray-400 hover:text-error"
             >
-              <ApperIcon name="Trash2" className="w-4 h-4" />
+              <ApperIcon name="Trash2" className="h-4 w-4" />
             </Button>
           </div>
 
-          {/* Progress Circle */}
+          {/* Progress Summary */}
+          <div className="flex items-center justify-between py-2">
+            <span className="text-gray-600">Progress</span>
+            <span className="font-medium">
+              {formatCurrency(goal.currentAmount)} of {formatCurrency(goal.targetAmount)}
+            </span>
+          </div>
+{/* Progress Circle */}
           <div className="flex items-center justify-center py-4">
-            <div className="relative w-24 h-24">
-              <svg className="w-24 h-24 transform -rotate-90" viewBox="0 0 100 100">
+            <div className="relative w-32 h-32">
+              <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 100 100">
                 <circle
                   cx="50"
                   cy="50"

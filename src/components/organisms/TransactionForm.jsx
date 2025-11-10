@@ -32,12 +32,12 @@ const TransactionForm = ({
   useEffect(() => {
     if (transaction) {
       setFormData({
-        amount: transaction.amount.toString(),
-        category: transaction.category,
-        type: transaction.type,
-        date: formatShortDate(new Date(transaction.date)),
-        description: transaction.description,
-        notes: transaction.notes || ""
+amount: (transaction.amount_c || transaction.amount || 0).toString(),
+        category: transaction.category_c || transaction.category || "",
+        type: transaction.type_c || transaction.type || "expense",
+        date: formatShortDate(new Date(transaction.date_c || transaction.date || new Date())),
+        description: transaction.description_c || transaction.description || "",
+        notes: transaction.notes_c || transaction.notes || ""
       });
     } else {
       setFormData({
@@ -178,9 +178,9 @@ const TransactionForm = ({
             required
           >
             <option value="">Select a category</option>
-            {filteredCategories.map((category) => (
-              <option key={category.Id} value={category.name}>
-                {category.name}
+{filteredCategories.map((category) => (
+              <option key={category.Id} value={category.name_c || category.name}>
+                {category.name_c || category.name}
               </option>
             ))}
           </FormField>

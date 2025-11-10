@@ -45,16 +45,18 @@ const Budgets = () => {
       ]);
 
       // Update spent amounts based on actual transactions
-      const expenseCategories = monthTransactions
-        .filter(t => t.type === "expense")
+const expenseCategories = monthTransactions
+        .filter(t => (t.type_c || t.type) === "expense")
         .reduce((acc, transaction) => {
-          acc[transaction.category] = (acc[transaction.category] || 0) + transaction.amount;
+          const category = transaction.category_c || transaction.category;
+          const amount = transaction.amount_c || transaction.amount || 0;
+          acc[category] = (acc[category] || 0) + amount;
           return acc;
         }, {});
 
       const updatedBudgets = budgetsData.map(budget => ({
         ...budget,
-        spent: expenseCategories[budget.category] || 0
+        spent: expenseCategories[budget.category_c || budget.category] || 0
       }));
 
       setBudgets(updatedBudgets);
@@ -80,7 +82,7 @@ const Budgets = () => {
     }
 
     try {
-      await budgetService.create({
+await budgetService.create({
         category: newBudgetForm.category,
         monthlyLimit: amount,
         month: selectedMonth
@@ -95,13 +97,16 @@ const Budgets = () => {
     }
   };
 
-  const getCategoryInfo = (categoryName) => {
-    const category = categories.find(cat => cat.name === categoryName);
-    return category ? { color: category.color, icon: category.icon } : { color: "#6b7280", icon: "Tag" };
+const getCategoryInfo = (categoryName) => {
+    const category = categories.find(cat => (cat.name_c || cat.name) === categoryName);
+    return category ? { 
+      color: category.color_c || category.color, 
+      icon: category.icon_c || category.icon 
+    } : { color: "#6b7280", icon: "Tag" };
   };
 
-  const availableCategories = categories.filter(cat => 
-    !budgets.some(budget => budget.category === cat.name)
+const availableCategories = categories.filter(cat => 
+    !budgets.some(budget => (budget.category_c || budget.category) === (cat.name_c || cat.name))
   );
 
   if (loading) return <Loading variant="skeleton" />;
@@ -180,9 +185,9 @@ const Budgets = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {budgets.map((budget) => (
               <BudgetCard
-                key={budget.Id}
+key={budget.Id}
                 budget={budget}
-                categoryInfo={getCategoryInfo(budget.category)}
+                categoryInfo={getCategoryInfo(budget.category_c || budget.category)}
                 onUpdate={loadData}
               />
             ))}
@@ -228,8 +233,8 @@ const Budgets = () => {
           >
             <option value="">Select a category</option>
             {availableCategories.map((category) => (
-              <option key={category.Id} value={category.name}>
-                {category.name}
+<option key={category.Id} value={category.name_c || category.name}>
+                {category.name_c || category.name}
               </option>
             ))}
           </FormField>
