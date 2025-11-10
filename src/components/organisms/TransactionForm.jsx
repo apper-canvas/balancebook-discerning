@@ -52,12 +52,18 @@ amount: (transaction.amount_c || transaction.amount || 0).toString(),
     setErrors({});
   }, [transaction, isOpen]);
 
-  const loadCategories = async () => {
+const loadCategories = async () => {
     try {
       const data = await categoryService.getAll();
-      setCategories(data);
+      console.log("Loaded categories:", data);
+      console.log("Categories count:", data?.length || 0);
+      if (data && data.length > 0) {
+        console.log("First category sample:", data[0]);
+      }
+      setCategories(data || []);
     } catch (error) {
       console.error("Failed to load categories:", error);
+      setCategories([]);
     }
   };
 
@@ -116,9 +122,17 @@ amount: (transaction.amount_c || transaction.amount || 0).toString(),
     }
   };
 
-const filteredCategories = categories.filter(cat => 
-    formData.type === "income" ? (cat.name_c || cat.name) === "Income" : (cat.name_c || cat.name) !== "Income"
-  );
+const filteredCategories = categories.filter(cat => {
+    const categoryName = cat.name_c || cat.name || "";
+    const isIncomeCategory = categoryName.toLowerCase() === "income";
+    const shouldInclude = formData.type === "income" ? isIncomeCategory : !isIncomeCategory;
+    return shouldInclude;
+  });
+
+  console.log("Transaction type:", formData.type);
+  console.log("All categories:", categories.length);
+  console.log("Filtered categories:", filteredCategories.length);
+  console.log("Filtered categories data:", filteredCategories);
 
   return (
     <Modal
@@ -178,10 +192,15 @@ const filteredCategories = categories.filter(cat =>
             required
           >
             <option value="">Select a category</option>
-{filteredCategories.map((category) => (
-              <option key={category.Id} value={category.name_c || category.name}>
-                {category.name_c || category.name}
-              </option>
+{filteredCategories.map((category) => {
+              const categoryName = category.name_c || category.name || `Category ${category.Id}`;
+              console.log("Rendering option:", {id: category.Id, name: categoryName});
+              return (
+                <option key={category.Id} value={categoryName}>
+                  {categoryName}
+                </option>
+              );
+            })}
             ))}
           </FormField>
 
